@@ -30,9 +30,8 @@ export default function Footer() {
           <div className={styles.col}>
             <h3>Contato</h3>
             <div className={styles.links}>
-              <a href="mailto:[E-mail]" className={styles.link}>[E-mail de Contato]</a>
-              <a href="#" className={styles.link}>[WhatsApp de Contato]</a>
-              <a href="#" className={styles.link}>[Instagram]</a>
+              <a href="mailto:giovani@medaffection.com" className={styles.link}>giovani@medaffection.com</a>
+              <a href="https://wa.me/5551995661032" target="_blank" rel="noopener noreferrer" className={styles.link}>WhatsApp: (51) 99566-1032</a>
             </div>
           </div>
         </div>
