@@ -23,12 +23,12 @@ export default function Home() {
       href: "/circulo-vital",
     },
     {
-      title: "Fazer uma pós-graduação",
+      title: "Cursar uma Pós-graduação",
       subtitle: "VITAL Formação",
       href: "/pos",
     },
     {
-      title: "Criar um negócio em saúde",
+      title: "Criar um negócio na área da saúde",
       subtitle: "Saúde que Vira Negócio",
       href: "/saude-que-vira-negocio",
     },
