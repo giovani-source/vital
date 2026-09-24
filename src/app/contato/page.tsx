@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Send, ArrowRight } from "lucide-react";
 
 export default function ContatoPage() {
@@ -30,7 +30,6 @@ export default function ContatoPage() {
   const [isClient, setIsClient] = useState(false);
 
   // Hook para rodar apenas no client-side
-  import { useEffect } from "react";
   useEffect(() => {
     setIsClient(true);
     if (window.location.search.includes("sucesso=true")) {
