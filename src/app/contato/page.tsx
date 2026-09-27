@@ -34,6 +34,15 @@ export default function ContatoPage() {
     setIsClient(true);
     if (window.location.search.includes("sucesso=true")) {
       setEnviado(true);
+      // Dispara o evento de conversão do Google Ads
+      if (typeof window !== "undefined" && typeof (window as any).gtag === "function") {
+        (window as any).gtag('event', 'conversion', {
+            'send_to': 'AW-18437813117/h5i_CM6964MdEP3m6tdE',
+            'value': 1.0,
+            'currency': 'EUR',
+            'transaction_id': ''
+        });
+      }
     }
   }, []);
 
