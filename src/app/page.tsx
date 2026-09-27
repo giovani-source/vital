@@ -65,7 +65,15 @@ export default function Home() {
             animate="visible"
             variants={staggerContainer}
           >
-            <motion.span className={styles.brand} variants={fadeUp}>VITAL</motion.span>
+            <motion.div variants={fadeUp} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+              <span className={styles.brand} style={{ margin: 0 }}>VITAL</span>
+              <span style={{ width: '1px', height: '24px', backgroundColor: 'var(--border)' }}></span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ color: 'var(--muted-foreground)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>Uma propriedade</span>
+                <img src="/iatec-logo.png" alt="IATEC Saúde" style={{ height: '36px', objectFit: 'contain' }} />
+                <span style={{ color: 'var(--foreground)', fontSize: '0.875rem', fontWeight: 'bold' }}>IATEC Saúde</span>
+              </div>
+            </motion.div>
             <motion.h1 className={`text-h1 ${styles.title}`} variants={fadeUp}>
               Conhecimento que vira trajetória.
             </motion.h1>
