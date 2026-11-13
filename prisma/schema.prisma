@@ -1,0 +1,530 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./pep_hospitalar.db"
+}
+
+// 1. Instituições Hospitalares
+model Institution {
+  id          String         @id @default(cuid())
+  name        String
+  ShortName   String
+  cnes        String         @unique
+  cnpj        String         @unique
+  city        String
+  state       String
+  phone       String?
+  active      Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  units       HospitalUnit[]
+  users       User[]
+  patients    Patient[]
+}
+
+// 2. Unidades Hospitalares (Setores / Postos de Enfermagem)
+model HospitalUnit {
+  id            String       @id @default(cuid())
+  institutionId String
+  code          String       @unique // ex: "5SUL", "UTI-AD", "EMERG", "CIR-3N"
+  name          String       // ex: "5º Sul - Internação Clínica e Hematológica"
+  floor         String       // ex: "5º Andar - Ala Sul"
+  specialty     String       // ex: "Clínica Médica / Onco-Hematologia"
+  active        Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  institution   Institution  @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  beds          Bed[]
+  admissions    Admission[]
+  encounters    Encounter[]
+}
+
+// 3. Leitos Hospitalares
+model Bed {
+  id          String       @id @default(cuid())
+  unitId      String
+  code        String       @unique // ex: "0549A", "0549B", "0551A", "0551B", "0553B"
+  room        String       // ex: "Enfermaria 549", "Enfermaria 551"
+  type        String       @default("ENFERMARIA") // ENFERMARIA, UTI, ISOLAMENTO, OBSERVACAO
+  status      String       @default("LIVRE") // LIVRE, OCUPADO, HIGIENIZACAO, MANUTENCAO, RESERVADO
+  features    String?      // ex: "Oxigênio, Vácuo, Monitor Multiparamétrico"
+  updatedAt   DateTime     @updatedAt
+  unit        HospitalUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  admissions  Admission[]
+}
+
+// 4. Perfis e Permissões (RBAC)
+model RolePermission {
+  id          String   @id @default(cuid())
+  role        String   // ADMIN, MEDICO, ENFERMEIRO, TECNICO_ENFERMAGEM, FISIOTERAPEUTA, OUTRO_ASSISTENCIAL
+  resource    String   // PEP_READ, PEP_EVOLUTION, NURSING_DIAGNOSIS, PRESCRIPTION_MED, PRESCRIPTION_NURSING, CHECK_MEDICATION, VITAL_SIGNS, ADMIN_USERS
+  canRead     Boolean  @default(false)
+  canCreate   Boolean  @default(false)
+  canUpdate   Boolean  @default(false)
+  canFinalize Boolean  @default(false)
+  description String?
+
+  @@unique([role, resource])
+}
+
+// 5. Usuários do Sistema
+model User {
+  id                  String                     @id @default(cuid())
+  institutionId       String
+  username            String                     @unique
+  email               String                     @unique
+  name                String
+  passwordHash        String
+  passwordSalt        String
+  role                String                     // ADMIN, MEDICO, ENFERMEIRO, TECNICO_ENFERMAGEM, FISIOTERAPEUTA, OUTRO_ASSISTENCIAL
+  active              Boolean                    @default(true)
+  failedLoginAttempts Int                        @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  recoveryToken       String?
+  recoveryExpiresAt   DateTime?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+  institution         Institution                @relation(fields: [institutionId], references: [id])
+  professional        ProfessionalProfile?
+  sessions            Session[]
+  evolutions          ClinicalEvolution[]
+  nursingAssessments  NursingAssessment[]
+  nursingPlans        NursingProcessPlan[]
+  vitalSigns          VitalSignRecord[]
+  prescriptions       Prescription[]
+  administrations     MedicationAdministration[]
+  examsRequested      ExamProcedure[]
+  documentsUploaded   ClinicalDocument[]
+  diagnosesAuthored   Diagnosis[]
+  allergiesRecorded   Allergy[]
+  auditLogs           AuditLog[]
+}
+
+// 6. Profissionais e Registros Profissionais (CRM, COREN, CREFITO, etc.)
+model ProfessionalProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  category            String   // Médico, Enfermeiro, Técnico de Enfermagem, Fisioterapeuta, Farmacêutico Clínico
+  councilType         String   // CRM, COREN, CREFITO, CRF, CRN
+  councilNumber       String   // ex: "45892", "218490"
+  councilState        String   @default("RS")
+  specialty           String   // ex: "Clínica Médica", "Enfermagem Assistencial Adulto", "Fisioterapia Hospitalar"
+  rqe                 String?
+  icpBrasilPrepared   Boolean  @default(true)
+  digitalSignatureKey String?  // Identificador extensível para certificado ICP-Brasil
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 7. Sessões Autenticadas
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  ipAddress String?
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 8. Pacientes (Cadastro Longitudinal Único)
+model Patient {
+  id                    String              @id @default(cuid())
+  institutionId         String
+  chartNumber           String              @unique // Nº do Prontuário ex: "7834153", "18382671"
+  name                  String
+  socialName            String?
+  birthDate             DateTime
+  sex                   String              // M, F, I
+  skinColor             String              @default("Não declarada") // Branca, Parda, Preta, Amarela, Indígena
+  maritalStatus         String              @default("Solteiro(a)")
+  occupation            String              @default("Outros")
+  educationLevel        String              @default("Ensino Médio")
+  birthPlace            String              @default("Porto Alegre")
+  city                  String              @default("Porto Alegre")
+  state                 String              @default("RS")
+  religion              String?
+  cpf                   String?             @unique
+  cns                   String?             @unique // Cartão Nacional de Saúde
+  phone                 String?
+  emergencyContactName  String?
+  emergencyRelationship String?
+  emergencyPhone        String?
+  bloodType             String?             // A+, O+, B+, AB+, etc.
+  clinicalHistory       String?             // Resumo clínico longitudinal
+  personalAntecedents   String?             // Antecedentes pessoais (HAS, DM2, cirurgias prévias)
+  familyAntecedents     String?             // Antecedentes familiares
+  continuousMedications String?             // Medicamentos de uso domiciliar contínuo
+  transfusionHistory    String              @default("Nunca transfundiu")
+  active                Boolean             @default(true)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  institution           Institution         @relation(fields: [institutionId], references: [id])
+  encounters            Encounter[]
+  admissions            Admission[]
+  diagnoses             Diagnosis[]
+  allergies             Allergy[]
+  evolutions            ClinicalEvolution[]
+  nursingAssessments    NursingAssessment[]
+  nursingPlans          NursingProcessPlan[]
+  vitalSigns            VitalSignRecord[]
+  prescriptions         Prescription[]
+  exams                 ExamProcedure[]
+  documents             ClinicalDocument[]
+  auditLogs             AuditLog[]
+}
+
+// 9. Atendimentos (Separação entre Paciente e Atendimento)
+model Encounter {
+  id                  String                     @id @default(cuid())
+  encounterNumber     String                     @unique // ex: "ATD-2026-00941"
+  patientId           String
+  unitId              String
+  type                String                     @default("INTERNACAO") // INTERNACAO, URGENCIA, AMBULATORIAL
+  status              String                     @default("EM_ANDAMENTO") // EM_ANDAMENTO, ALTA_HOSPITALAR, TRANSFERIDO, OBITO
+  mainDiagnosis       String                     // Diagnóstico principal do atendimento
+  mainIcd10           String                     // CID-10 principal
+  reasonForAdmission  String                     // Motivo da internação / queixa principal
+  riskConditions      String                     @default("[]") // JSON array de alertas: ["ALERGIA", "QUEDA", "LESAO_PRESSAO", "CONTATO"]
+  dietSummary         String                     @default("Dieta livre oral normossódica")
+  careLine            String?                    // ex: "Onco-Hematologia / TMO", "Linha de Cuidado AVC/IAM"
+  openedAt            DateTime                   @default(now())
+  closedAt            DateTime?
+  dischargeSummary    String?
+  patient             Patient                    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  unit                HospitalUnit               @relation(fields: [unitId], references: [id])
+  admission           Admission?
+  diagnoses           Diagnosis[]
+  evolutions          ClinicalEvolution[]
+  nursingAssessments  NursingAssessment[]
+  nursingPlans        NursingProcessPlan[]
+  vitalSigns          VitalSignRecord[]
+  prescriptions       Prescription[]
+  administrations     MedicationAdministration[]
+  exams               ExamProcedure[]
+  documents           ClinicalDocument[]
+}
+
+// 10. Internações (Vinculação a Unidade e Leito)
+model Admission {
+  id                    String       @id @default(cuid())
+  encounterId           String       @unique
+  patientId             String
+  unitId                String
+  bedId                 String
+  admittedAt            DateTime     @default(now())
+  estimatedDischargeAt  DateTime?
+  dischargedAt          DateTime?
+  origin                String       @default("Emergência") // Emergência, Bloco Cirúrgico, Ambulatório, Transferência Externa
+  accompanyingPerson    String?
+  accompanyingRelation  String?
+  isolationPrecaution   String       @default("Padrão") // Padrão, Contato, Gotículas, Aerossóis, Neutropênico
+  status                String       @default("ATIVA") // ATIVA, ENCERRADA, TRANSFERIDA
+  notes                 String?
+  encounter             Encounter    @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  patient               Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  unit                  HospitalUnit @relation(fields: [unitId], references: [id])
+  bed                   Bed          @relation(fields: [bedId], references: [id])
+}
+
+// 11. Diagnósticos Clínicos (CID-10)
+model Diagnosis {
+  id          String     @id @default(cuid())
+  patientId   String
+  encounterId String?
+  authorId    String
+  icd10Code   String     // ex: "C83.3", "I10", "J18.9"
+  description String     // ex: "Linfoma não-Hodgkin difuso de grandes células B"
+  type        String     @default("PRINCIPAL") // PRINCIPAL, SECUNDARIO, COMORBIDADE
+  status      String     @default("ATIVO") // ATIVO, RESOLVIDO, SUSPEITO
+  diagnosedAt DateTime   @default(now())
+  notes       String?
+  patient     Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter   Encounter? @relation(fields: [encounterId], references: [id])
+  author      User       @relation(fields: [authorId], references: [id])
+}
+
+// 12. Alergias Cadastradas (Medicamentos e Outras — conforme Modal AGHUse)
+model Allergy {
+  id          String   @id @default(cuid())
+  patientId   String
+  recordedById String
+  category    String   @default("MEDICAMENTO") // MEDICAMENTO, ALIMENTO, MATERIAL, INSETO, PLANTA, OUTRO
+  substance   String   // ex: "Dipirona Sódica", "Contraste Iodado", "Látex"
+  reaction    String   // ex: "Broncoespasmo e urticária", "Edema de glote / Anafilaxia", "Exantema maculopapular"
+  severity    String   @default("MODERADA") // LEVE, MODERADA, GRAVE
+  reportedBy  String   @default("PACIENTE") // PACIENTE, PROFISSIONAL_HOSPITAL, FAMILIAR
+  active      Boolean  @default(true)
+  recordedAt  DateTime @default(now())
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  recordedBy  User     @relation(fields: [recordedById], references: [id])
+}
+
+// 13. Evoluções e Anotações Clínicas (Editor SOAP/Livre, Rascunho, Finalização Imutável e Adendos)
+model ClinicalEvolution {
+  id              String              @id @default(cuid())
+  patientId       String
+  encounterId     String
+  authorId        String
+  category        String              // EVOLUCAO_MEDICA, EVOLUCAO_ENFERMAGEM, ANOTACAO_TECNICO_ENF, EVOLUCAO_FISIOTERAPIA, EVOLUCAO_MULTIPROFISSIONAL
+  format          String              @default("SOAP") // SOAP, LIVRE
+  title           String
+  subjective      String?             // S - Subjetivo
+  objective       String?             // O - Objetivo
+  impression      String?             // I - Impressão / Avaliação
+  conduct         String?             // C - Conduta
+  freeText        String?             // Texto Livre / Consolidado
+  status          String              @default("RASCUNHO") // RASCUNHO, FINALIZADO, RETIFICADO
+  version         Int                 @default(1)
+  isAddendum      Boolean             @default(false)
+  addendumReason  String?             // Motivo da retificação / adendo
+  parentRecordId  String?             // Vínculo com o registro original finalizado
+  lastSavedAt     DateTime            @default(now())
+  finalizedAt     DateTime?
+  signatureHash   String?             // Hash de integridade e carimbo de tempo do servidor
+  createdAt       DateTime            @default(now())
+  patient         Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter       Encounter           @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  author          User                @relation(fields: [authorId], references: [id])
+  parentRecord    ClinicalEvolution?  @relation("EvolutionAddenda", fields: [parentRecordId], references: [id])
+  addenda         ClinicalEvolution[] @relation("EvolutionAddenda")
+}
+
+// 14. Etapa 1 do Processo de Enfermagem: Avaliação / Anamnese de Enfermagem (Horta: *ID, *HD, *NPB, *NPS, *NPE, *EPS, *CON)
+model NursingAssessment {
+  id                    String    @id @default(cuid())
+  patientId             String
+  encounterId           String
+  authorId              String
+  status                String    @default("RASCUNHO") // RASCUNHO, FINALIZADO
+  // *HD - História
+  admissionReason       String
+  hospitalizedLast6m    Boolean   @default(false)
+  medicationsInUse      String?
+  transfusionReaction   String    @default("Nunca transfundiu")
+  knowsHealthCondition  Boolean   @default(true)
+  currentHistory        String?
+  pastHistory           String?
+  familyHistory         String?
+  // *NPB - Necessidades Psicobiológicas
+  neuroRegulation       String    @default("Lúcido, orientado no tempo e espaço, Glasgow 15")
+  camScore              String    @default("Negativo para Delirium")
+  painPresent           Boolean   @default(false)
+  painDetails           String?   // Característica, Localização, Intensidade (EVA)
+  respiratoryExam       String    @default("Eupneico em ar ambiente, MV+ bilateral sem ruídos adventícios")
+  vitalSignsNotes       String?
+  extremitiesPerfusion  String    @default("Extremidades aquecidas, TEC < 3s, sem edemas")
+  bmiNutrition          String?   // Peso, altura, IMC, aceitação da dieta
+  oralCavity            String    @default("Mucosas coradas e hidratadas, higiene oral preservada")
+  skinIntegrity         String    @default("Pele íntegra, turgor preservado")
+  pressureInjury        String    @default("Sem lesão por pressão (Braden monitorado)")
+  physicalMobility      String    @default("Deambula com auxílio / restrição parcial no leito")
+  fallRiskSak           String    @default("Risco Moderado (Escala SAK)")
+  eliminations          String    @default("Diurese espontânea clara; evacuação fisiológica presente")
+  sleepAndRest          String    @default("Sono reparador preservado")
+  // *NPS - Necessidades Psicossociais
+  familyRelationship    String    @default("Rede de apoio familiar presente e participativa")
+  vulnerabilitySituations String  @default("Sem vulnerabilidade identificada no momento")
+  emotionalState        String    @default("Tranquilo") // Tranquilo, Ansioso, Temeroso, Deprimido
+  lifestyleAndWork      String?
+  // *NPE - Necessidades Psicoespirituais
+  beliefsAndValues      String    @default("Crenças religiosas respeitadas; encontra conforto no apoio familiar")
+  // *EPS - Educação para Saúde
+  selfCareCapacity      String    @default("Paciente com capacidade para o autocuidado")
+  educationLimitations  String    @default("Paciente sem limitações para a educação")
+  smokingStatus         String    @default("Nega tabagismo")
+  otherDrugsStatus      String    @default("Nega uso de outras substâncias")
+  // *CON - Conduta e Linhas de Cuidado
+  conductSummary        String
+  careLineHCPA          String    @default("Prevenção de eventos adversos e segurança do paciente")
+  educationActions      String    @default("[\"Prevenção de quedas\",\"Identificação do paciente\",\"Direitos do paciente\",\"Lesão por pressão\"]")
+  freeTextSummary       String?
+  finalizedAt           DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  patient               Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter             Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  author                User      @relation(fields: [authorId], references: [id])
+}
+
+// 15. Etapas 2 a 5 do Processo de Enfermagem (COFEN nº 736/2024)
+model NursingProcessPlan {
+  id                      String    @id @default(cuid())
+  patientId               String
+  encounterId             String
+  authorId                String
+  // Etapa 1 vinculada (resumo da avaliação que sustenta o diagnóstico)
+  assessmentSummary       String
+  // Etapa 2: Diagnóstico de Enfermagem
+  nursingDiagnosisCode    String    // ex: "DE-001", "00004", "00085"
+  nursingDiagnosisTitle   String    // ex: "Risco de Infecção", "Mobilidade Física Prejudicada", "Dor Aguda"
+  domainClass             String    // ex: "Domínio 11: Segurança/Proteção — Classe 1: Infecção"
+  relatedFactors          String    // Fatores relacionados / fatores de risco
+  definingCharacteristics String?   // Características definidoras / sinais e sintomas
+  // Etapa 3: Planejamento de Enfermagem
+  expectedOutcomes        String    // Resultados esperados / Metas mensuráveis
+  targetDeadline          String    @default("24 a 48 horas")
+  priority                String    @default("ALTA") // ALTA, MEDIA, BAIXA
+  // Etapa 4: Implementação de Enfermagem (Intervenções prescritas pelo Enfermeiro)
+  interventions           String    // Prescrições/cuidados de enfermagem estruturados
+  scheduleFrequency       String    @default("6/6 horas")
+  // Etapa 5: Evolução de Enfermagem (Avaliação dos resultados)
+  evaluationEvolution     String?
+  outcomeStatus           String    @default("EM_ACOMPANHAMENTO") // MANTIDO, MELHORADO, RESOLVIDO, PIORADO, EM_ACOMPANHAMENTO
+  status                  String    @default("ATIVO") // RASCUNHO, ATIVO, ENCERRADO
+  finalizedAt             DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  patient                 Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter               Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  author                  User      @relation(fields: [authorId], references: [id])
+}
+
+// 16. Sinais Vitais e Controles (Monitorização e Balanço Hídrico — conforme Foto 1 do AGHUse)
+model VitalSignRecord {
+  id                String    @id @default(cuid())
+  patientId         String
+  encounterId       String
+  recordedById      String
+  recordedAt        DateTime  @default(now())
+  systolicBP        Int?      // PAS (mmHg)
+  diastolicBP       Int?      // PAD (mmHg)
+  heartRate         Int?      // FC (bpm)
+  respiratoryRate   Int?      // FR (irpm)
+  temperature       Float?    // Tax (°C)
+  spo2              Int?      // SpO2 (%)
+  painScore         Int?      // Dor CALOI / EVA (0-10)
+  capillaryGlucose  Int?      // Glic Cap (mg/dL)
+  weightKg          Float?    // Peso (kg)
+  bradenScore       Int?      // Escala de Braden (6-23)
+  sakFallScore      Int?      // Escala SAK de Quedas
+  fluidIntakeMl     Int?      // Balanço Hídrico - Administrado / Infundido (mL)
+  fluidOutputMl     Int?      // Balanço Hídrico - Eliminado / Diurese (mL)
+  fluidDescription  String?   // ex: "BHP -95 | Administrado Ciclofosfamida / resta SF 793mL"
+  notes             String?   // Anotações do controle
+  patient           Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter         Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  recordedBy        User      @relation(fields: [recordedById], references: [id])
+}
+
+// 17. Prescrições (Médica e de Enfermagem)
+model Prescription {
+  id            String             @id @default(cuid())
+  prescriptionNumber String        @unique // ex: "PRESC-2026-8812"
+  patientId     String
+  encounterId   String
+  prescriberId  String
+  type          String             @default("MEDICA") // MEDICA, ENFERMAGEM
+  status        String             @default("VIGENTE") // RASCUNHO, VIGENTE, SUSPENSA, ENCERRADA
+  validFrom     DateTime           @default(now())
+  validUntil    DateTime
+  generalNotes  String?
+  createdAt     DateTime           @default(now())
+  patient       Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter     Encounter          @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  prescriber    User               @relation(fields: [prescriberId], references: [id])
+  items         PrescriptionItem[]
+}
+
+// 18. Itens Prescritos (Dieta, Cuidados e Medicamentos — conforme Foto 4 do AGHUse)
+model PrescriptionItem {
+  id              String                     @id @default(cuid())
+  prescriptionId  String
+  itemOrder       Int                        @default(1)
+  category        String                     @default("MEDICAMENTO") // DIETA, CUIDADO, MEDICAMENTO
+  description     String                     // ex: "ACICLOVIR COMPRIMIDO 200 MG", "CONTROLE DE SINAIS VITAIS"
+  observation     String?                    // ex: "Obs.: Profilaxia", "Obs.: Se dor moderada - intensa"
+  dose            String                     // ex: "400 MG", "30 MG", "1.000 MG", "1 TB"
+  route           String                     // ex: "Oral", "Endovenosa", "Tópica Cutâneo", "Subcutânea"
+  infusionRate    String?                    // Veloc. Inf. ex: "60 mL/h", "Correr em 30 min"
+  frequency       String                     // ex: "12/12 horas", "8/8 horas", "6/6 horas", "1 X ao dia", "CONTÍNUO"
+  condition       String                     @default("FIXO") // FIXO, SE_NECESSARIO
+  scheduledHours  String                     @default("[\"08:00\",\"20:00\"]") // JSON array ex: ["20:00","08:00"] ou ["SN"]
+  active          Boolean                    @default(true)
+  prescription    Prescription               @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  administrations MedicationAdministration[]
+}
+
+// 19. Checagem Beira-Leito de Medicamentos e Cuidados
+model MedicationAdministration {
+  id                 String           @id @default(cuid())
+  prescriptionItemId String
+  encounterId        String
+  checkedById        String
+  scheduledTime      String           // Horário previsto ex: "20:00", "08:00", "SN"
+  effectiveTime      DateTime         @default(now()) // Horário efetivo do servidor
+  status             String           @default("REALIZADO") // REALIZADO, NAO_REALIZADO, RECUSADO, ADIADO
+  justification      String?          // Obrigatório quando NAO_REALIZADO, RECUSADO ou ADIADO
+  batchNumber        String?          // Lote / Validade quando aplicável
+  notes              String?
+  createdAt          DateTime         @default(now())
+  prescriptionItem   PrescriptionItem @relation(fields: [prescriptionItemId], references: [id], onDelete: Cascade)
+  encounter          Encounter        @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  checkedBy          User             @relation(fields: [checkedById], references: [id])
+}
+
+// 20. Exames e Procedimentos
+model ExamProcedure {
+  id                String    @id @default(cuid())
+  patientId         String
+  encounterId       String
+  requestedById     String
+  category          String    @default("LABORATORIAL") // LABORATORIAL, IMAGEM, PROCEDIMENTO
+  code              String    // Código SIGTAP / TUSS / Interno
+  name              String    // ex: "Hemograma Completo com Plaquetas", "Tomografia de Tórax Alta Resolução"
+  clinicalIndication String
+  priority          String    @default("ROTINA") // URGENTE, ROTINA
+  status            String    @default("LAUDADO") // SOLICITADO, COLETADO, EM_ANALISE, LAUDADO
+  requestedAt       DateTime  @default(now())
+  resultAt          DateTime?
+  resultSummary     String?   // Resultado estruturado / laudo
+  referenceRange    String?
+  attachmentName    String?
+  patient           Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter         Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  requestedBy       User      @relation(fields: [requestedById], references: [id])
+}
+
+// 21. Documentos e Anexos (PDF e Imagens Validadas)
+model ClinicalDocument {
+  id            String    @id @default(cuid())
+  patientId     String
+  encounterId   String
+  uploadedById  String
+  title         String
+  category      String    @default("TERMO_CONSENTIMENTO") // TERMO_CONSENTIMENTO, LAUDO_EXTERNO, IMAGEM_CLINICA, ENCAMINHAMENTO, PARECER
+  fileName      String
+  mimeType      String    // application/pdf, image/jpeg, image/png
+  fileSizeBytes Int
+  sha256Hash    String
+  contentBase64 String?   // Conteúdo seguro ou URI de demonstração
+  description   String?
+  restrictedTo  String    @default("TODOS_ASSISTENCIAIS")
+  uploadedAt    DateTime  @default(now())
+  patient       Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter     Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  uploadedBy    User      @relation(fields: [uploadedById], references: [id])
+}
+
+// 22. Auditoria de Acesso e Alteração (LGPD / CFM / SBIS / COFEN 754/2024)
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  userName    String
+  userRole    String
+  patientId   String?
+  encounterId String?
+  action      String   // LOGIN_SUCCESS, LOGIN_FAILED, VIEW_PATIENT_PEP, CREATE_DRAFT, FINALIZE_RECORD, CREATE_ADDENDUM, CHECK_MEDICATION, EXPORT_PDF, ACCESS_DENIED
+  module      String   // AUTH, DASHBOARD, PACIENTES, EVOLUCAO, ENFERMAGEM, SINAIS_VITAIS, PRESCRICAO, CHECAGEM, EXAMES, DOCUMENTOS, ADMIN
+  entityType  String?
+  entityId    String?
+  details     String
+  ipAddress   String   @default("127.0.0.1")
+  createdAt   DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id])
+  patient     Patient? @relation(fields: [patientId], references: [id])
+}
+

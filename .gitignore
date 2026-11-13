@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.vercel/
+out/
+dist/
+*.log
+.DS_Store
+._*
+.env.local
+.env.production.local
+prisma/*.db
+!prisma/seed_template.db
+prisma/*.db-journal
+.vercel

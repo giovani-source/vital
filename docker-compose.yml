@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pep_hospitalar_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pep_admin
+      POSTGRES_PASSWORD: pep_secure_2026
+      POSTGRES_DB: pep_hospitalar
+      TZ: America/Sao_Paulo
+    ports:
+      - "5432:5432"
+    volumes:
+      - pep_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pep_admin -d pep_hospitalar"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  adminer:
+    image: adminer:latest
+    container_name: pep_hospitalar_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pep_postgres_data:
+

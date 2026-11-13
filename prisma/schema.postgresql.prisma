@@ -1,0 +1,519 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_URL")
+}
+
+// 1. Instituições Hospitalares
+model Institution {
+  id          String         @id @default(cuid())
+  name        String
+  ShortName   String
+  cnes        String         @unique
+  cnpj        String         @unique
+  city        String
+  state       String
+  phone       String?
+  active      Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  units       HospitalUnit[]
+  users       User[]
+  patients    Patient[]
+}
+
+// 2. Unidades Hospitalares (Setores / Postos de Enfermagem)
+model HospitalUnit {
+  id            String       @id @default(cuid())
+  institutionId String
+  code          String       @unique
+  name          String
+  floor         String
+  specialty     String
+  active        Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  institution   Institution  @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  beds          Bed[]
+  admissions    Admission[]
+  encounters    Encounter[]
+}
+
+// 3. Leitos Hospitalares
+model Bed {
+  id          String       @id @default(cuid())
+  unitId      String
+  code        String       @unique
+  room        String
+  type        String       @default("ENFERMARIA")
+  status      String       @default("LIVRE")
+  features    String?
+  updatedAt   DateTime     @updatedAt
+  unit        HospitalUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  admissions  Admission[]
+}
+
+// 4. Perfis e Permissões (RBAC)
+model RolePermission {
+  id          String   @id @default(cuid())
+  role        String
+  resource    String
+  canRead     Boolean  @default(false)
+  canCreate   Boolean  @default(false)
+  canUpdate   Boolean  @default(false)
+  canFinalize Boolean  @default(false)
+  description String?
+
+  @@unique([role, resource])
+}
+
+// 5. Usuários do Sistema
+model User {
+  id                  String                     @id @default(cuid())
+  institutionId       String
+  username            String                     @unique
+  email               String                     @unique
+  name                String
+  passwordHash        String
+  passwordSalt        String
+  role                String
+  active              Boolean                    @default(true)
+  failedLoginAttempts Int                        @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  recoveryToken       String?
+  recoveryExpiresAt   DateTime?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+  institution         Institution                @relation(fields: [institutionId], references: [id])
+  professional        ProfessionalProfile?
+  sessions            Session[]
+  evolutions          ClinicalEvolution[]
+  nursingAssessments  NursingAssessment[]
+  nursingPlans        NursingProcessPlan[]
+  vitalSigns          VitalSignRecord[]
+  prescriptions       Prescription[]
+  administrations     MedicationAdministration[]
+  examsRequested      ExamProcedure[]
+  documentsUploaded   ClinicalDocument[]
+  diagnosesAuthored   Diagnosis[]
+  allergiesRecorded   Allergy[]
+  auditLogs           AuditLog[]
+}
+
+// 6. Profissionais e Registros Profissionais
+model ProfessionalProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  category            String
+  councilType         String
+  councilNumber       String
+  councilState        String   @default("RS")
+  specialty           String
+  rqe                 String?
+  icpBrasilPrepared   Boolean  @default(true)
+  digitalSignatureKey String?
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 7. Sessões Autenticadas
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  ipAddress String?
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 8. Pacientes
+model Patient {
+  id                    String              @id @default(cuid())
+  institutionId         String
+  chartNumber           String              @unique
+  name                  String
+  socialName            String?
+  birthDate             DateTime
+  sex                   String
+  skinColor             String              @default("Não declarada")
+  maritalStatus         String              @default("Solteiro(a)")
+  occupation            String              @default("Outros")
+  educationLevel        String              @default("Ensino Médio")
+  birthPlace            String              @default("Porto Alegre")
+  city                  String              @default("Porto Alegre")
+  state                 String              @default("RS")
+  religion              String?
+  cpf                   String?             @unique
+  cns                   String?             @unique
+  phone                 String?
+  emergencyContactName  String?
+  emergencyRelationship String?
+  emergencyPhone        String?
+  bloodType             String?
+  clinicalHistory       String?
+  personalAntecedents   String?
+  familyAntecedents     String?
+  continuousMedications String?
+  transfusionHistory    String              @default("Nunca transfundiu")
+  active                Boolean             @default(true)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  institution           Institution         @relation(fields: [institutionId], references: [id])
+  encounters            Encounter[]
+  admissions            Admission[]
+  diagnoses             Diagnosis[]
+  allergies             Allergy[]
+  evolutions            ClinicalEvolution[]
+  nursingAssessments    NursingAssessment[]
+  nursingPlans          NursingProcessPlan[]
+  vitalSigns            VitalSignRecord[]
+  prescriptions         Prescription[]
+  exams                 ExamProcedure[]
+  documents             ClinicalDocument[]
+  auditLogs             AuditLog[]
+}
+
+// 9. Atendimentos
+model Encounter {
+  id                  String                     @id @default(cuid())
+  encounterNumber     String                     @unique
+  patientId           String
+  unitId              String
+  type                String                     @default("INTERNACAO")
+  status              String                     @default("EM_ANDAMENTO")
+  mainDiagnosis       String
+  mainIcd10           String
+  reasonForAdmission  String
+  riskConditions      String                     @default("[]")
+  dietSummary         String                     @default("Dieta livre oral normossódica")
+  careLine            String?
+  openedAt            DateTime                   @default(now())
+  closedAt            DateTime?
+  dischargeSummary    String?
+  patient             Patient                    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  unit                HospitalUnit               @relation(fields: [unitId], references: [id])
+  admission           Admission?
+  diagnoses           Diagnosis[]
+  evolutions          ClinicalEvolution[]
+  nursingAssessments  NursingAssessment[]
+  nursingPlans        NursingProcessPlan[]
+  vitalSigns          VitalSignRecord[]
+  prescriptions       Prescription[]
+  administrations     MedicationAdministration[]
+  exams               ExamProcedure[]
+  documents           ClinicalDocument[]
+}
+
+// 10. Internações
+model Admission {
+  id                    String       @id @default(cuid())
+  encounterId           String       @unique
+  patientId             String
+  unitId                String
+  bedId                 String
+  admittedAt            DateTime     @default(now())
+  estimatedDischargeAt  DateTime?
+  dischargedAt          DateTime?
+  origin                String       @default("Emergência")
+  accompanyingPerson    String?
+  accompanyingRelation  String?
+  isolationPrecaution   String       @default("Padrão")
+  status                String       @default("ATIVA")
+  notes                 String?
+  encounter             Encounter    @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  patient               Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  unit                  HospitalUnit @relation(fields: [unitId], references: [id])
+  bed                   Bed          @relation(fields: [bedId], references: [id])
+}
+
+// 11. Diagnósticos Clínicos
+model Diagnosis {
+  id          String     @id @default(cuid())
+  patientId   String
+  encounterId String?
+  authorId    String
+  icd10Code   String
+  description String
+  type        String     @default("PRINCIPAL")
+  status      String     @default("ATIVO")
+  diagnosedAt DateTime   @default(now())
+  notes       String?
+  patient     Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter   Encounter? @relation(fields: [encounterId], references: [id])
+  author      User       @relation(fields: [authorId], references: [id])
+}
+
+// 12. Alergias Cadastradas
+model Allergy {
+  id           String   @id @default(cuid())
+  patientId    String
+  recordedById String
+  category     String   @default("MEDICAMENTO")
+  substance    String
+  reaction     String
+  severity     String   @default("MODERADA")
+  reportedBy   String   @default("PACIENTE")
+  active       Boolean  @default(true)
+  recordedAt   DateTime @default(now())
+  patient      Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  recordedBy   User     @relation(fields: [recordedById], references: [id])
+}
+
+// 13. Evoluções e Anotações Clínicas
+model ClinicalEvolution {
+  id              String              @id @default(cuid())
+  patientId       String
+  encounterId     String
+  authorId        String
+  category        String
+  format          String              @default("SOAP")
+  title           String
+  subjective      String?
+  objective       String?
+  impression      String?
+  conduct         String?
+  freeText        String?
+  status          String              @default("RASCUNHO")
+  version         Int                 @default(1)
+  isAddendum      Boolean             @default(false)
+  addendumReason  String?
+  parentRecordId  String?
+  lastSavedAt     DateTime            @default(now())
+  finalizedAt     DateTime?
+  signatureHash   String?
+  createdAt       DateTime            @default(now())
+  patient         Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter       Encounter           @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  author          User                @relation(fields: [authorId], references: [id])
+  parentRecord    ClinicalEvolution?  @relation("EvolutionAddenda", fields: [parentRecordId], references: [id])
+  addenda         ClinicalEvolution[] @relation("EvolutionAddenda")
+}
+
+// 14. Avaliação / Anamnese de Enfermagem
+model NursingAssessment {
+  id                      String    @id @default(cuid())
+  patientId               String
+  encounterId             String
+  authorId                String
+  status                  String    @default("RASCUNHO")
+  admissionReason         String
+  hospitalizedLast6m      Boolean   @default(false)
+  medicationsInUse        String?
+  transfusionReaction     String    @default("Nunca transfundiu")
+  knowsHealthCondition    Boolean   @default(true)
+  currentHistory          String?
+  pastHistory             String?
+  familyHistory           String?
+  neuroRegulation         String    @default("Lúcido, orientado no tempo e espaço, Glasgow 15")
+  camScore                String    @default("Negativo para Delirium")
+  painPresent             Boolean   @default(false)
+  painDetails             String?
+  respiratoryExam         String    @default("Eupneico em ar ambiente, MV+ bilateral sem ruídos adventícios")
+  vitalSignsNotes         String?
+  extremitiesPerfusion    String    @default("Extremidades aquecidas, TEC < 3s, sem edemas")
+  bmiNutrition            String?
+  oralCavity              String    @default("Mucosas coradas e hidratadas, higiene oral preservada")
+  skinIntegrity           String    @default("Pele íntegra, turgor preservado")
+  pressureInjury          String    @default("Sem lesão por pressão (Braden monitorado)")
+  physicalMobility        String    @default("Deambula com auxílio / restrição parcial no leito")
+  fallRiskSak             String    @default("Risco Moderado (Escala SAK)")
+  eliminations            String    @default("Diurese espontânea clara; evacuação fisiológica presente")
+  sleepAndRest            String    @default("Sono reparador preservado")
+  familyRelationship      String    @default("Rede de apoio familiar presente e participativa")
+  vulnerabilitySituations String    @default("Sem vulnerabilidade identificada no momento")
+  emotionalState          String    @default("Tranquilo")
+  lifestyleAndWork        String?
+  beliefsAndValues        String    @default("Crenças religiosas respeitadas; encontra conforto no apoio familiar")
+  selfCareCapacity        String    @default("Paciente com capacidade para o autocuidado")
+  educationLimitations    String    @default("Paciente sem limitações para a educação")
+  smokingStatus           String    @default("Nega tabagismo")
+  otherDrugsStatus        String    @default("Nega uso de outras substâncias")
+  conductSummary          String
+  careLineHCPA            String    @default("Prevenção de eventos adversos e segurança do paciente")
+  educationActions        String    @default("[\"Prevenção de quedas\",\"Identificação do paciente\",\"Direitos do paciente\",\"Lesão por pressão\"]")
+  freeTextSummary         String?
+  finalizedAt             DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  patient                 Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter               Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  author                  User      @relation(fields: [authorId], references: [id])
+}
+
+// 15. Processo de Enfermagem (Etapas 2 a 5)
+model NursingProcessPlan {
+  id                      String    @id @default(cuid())
+  patientId               String
+  encounterId             String
+  authorId                String
+  assessmentSummary       String
+  nursingDiagnosisCode    String
+  nursingDiagnosisTitle   String
+  domainClass             String
+  relatedFactors          String
+  definingCharacteristics String?
+  expectedOutcomes        String
+  targetDeadline          String    @default("24 a 48 horas")
+  priority                String    @default("ALTA")
+  interventions           String
+  scheduleFrequency       String    @default("6/6 horas")
+  evaluationEvolution     String?
+  outcomeStatus           String    @default("EM_ACOMPANHAMENTO")
+  status                  String    @default("ATIVO")
+  finalizedAt             DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  patient                 Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter               Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  author                  User      @relation(fields: [authorId], references: [id])
+}
+
+// 16. Sinais Vitais e Controles
+model VitalSignRecord {
+  id               String    @id @default(cuid())
+  patientId        String
+  encounterId      String
+  recordedById     String
+  recordedAt       DateTime  @default(now())
+  systolicBP       Int?
+  diastolicBP      Int?
+  heartRate        Int?
+  respiratoryRate  Int?
+  temperature      Float?
+  spo2             Int?
+  painScore        Int?
+  capillaryGlucose Int?
+  weightKg         Float?
+  bradenScore      Int?
+  sakFallScore     Int?
+  fluidIntakeMl    Int?
+  fluidOutputMl    Int?
+  fluidDescription String?
+  notes            String?
+  patient          Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter        Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  recordedBy       User      @relation(fields: [recordedById], references: [id])
+}
+
+// 17. Prescrições
+model Prescription {
+  id                 String             @id @default(cuid())
+  prescriptionNumber String             @unique
+  patientId          String
+  encounterId        String
+  prescriberId       String
+  type               String             @default("MEDICA")
+  status             String             @default("VIGENTE")
+  validFrom          DateTime           @default(now())
+  validUntil         DateTime
+  generalNotes       String?
+  createdAt          DateTime           @default(now())
+  patient            Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter          Encounter          @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  prescriber         User               @relation(fields: [prescriberId], references: [id])
+  items              PrescriptionItem[]
+}
+
+// 18. Itens Prescritos
+model PrescriptionItem {
+  id              String                     @id @default(cuid())
+  prescriptionId  String
+  itemOrder       Int                        @default(1)
+  category        String                     @default("MEDICAMENTO")
+  description     String
+  observation     String?
+  dose            String
+  route           String
+  infusionRate    String?
+  frequency       String
+  condition       String                     @default("FIXO")
+  scheduledHours  String                     @default("[\"08:00\",\"20:00\"]")
+  active          Boolean                    @default(true)
+  prescription    Prescription               @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  administrations MedicationAdministration[]
+}
+
+// 19. Checagem Beira-Leito
+model MedicationAdministration {
+  id                 String           @id @default(cuid())
+  prescriptionItemId String
+  encounterId        String
+  checkedById        String
+  scheduledTime      String
+  effectiveTime      DateTime         @default(now())
+  status             String           @default("REALIZADO")
+  justification      String?
+  batchNumber        String?
+  notes              String?
+  createdAt          DateTime         @default(now())
+  prescriptionItem   PrescriptionItem @relation(fields: [prescriptionItemId], references: [id], onDelete: Cascade)
+  encounter          Encounter        @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  checkedBy          User             @relation(fields: [checkedById], references: [id])
+}
+
+// 20. Exames e Procedimentos
+model ExamProcedure {
+  id                 String    @id @default(cuid())
+  patientId          String
+  encounterId        String
+  requestedById      String
+  category           String    @default("LABORATORIAL")
+  code               String
+  name               String
+  clinicalIndication String
+  priority           String    @default("ROTINA")
+  status             String    @default("LAUDADO")
+  requestedAt        DateTime  @default(now())
+  resultAt           DateTime?
+  resultSummary      String?
+  referenceRange     String?
+  attachmentName     String?
+  patient            Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter          Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  requestedBy        User      @relation(fields: [requestedById], references: [id])
+}
+
+// 21. Documentos e Anexos
+model ClinicalDocument {
+  id            String    @id @default(cuid())
+  patientId     String
+  encounterId   String
+  uploadedById  String
+  title         String
+  category      String    @default("TERMO_CONSENTIMENTO")
+  fileName      String
+  mimeType      String
+  fileSizeBytes Int
+  sha256Hash    String
+  contentBase64 String?
+  description   String?
+  restrictedTo  String    @default("TODOS_ASSISTENCIAIS")
+  uploadedAt    DateTime  @default(now())
+  patient       Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter     Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  uploadedBy    User      @relation(fields: [uploadedById], references: [id])
+}
+
+// 22. Auditoria de Acesso e Alteração
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  userName    String
+  userRole    String
+  patientId   String?
+  encounterId String?
+  action      String
+  module      String
+  entityType  String?
+  entityId    String?
+  details     String
+  ipAddress   String   @default("127.0.0.1")
+  createdAt   DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id])
+  patient     Patient? @relation(fields: [patientId], references: [id])
+}
+

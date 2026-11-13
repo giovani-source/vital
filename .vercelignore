@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+._*
+*.log
+package-lock.json
+prisma/pep_hospitalar.db
+prisma/*.db-journal
