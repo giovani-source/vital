@@ -148,63 +148,34 @@ export default function NursingProcessTab({
   const latestAssessment = assessments[0] || null;
 
   const [assessmentForm, setAssessmentForm] = useState({
-    admissionReason:
-      latestAssessment?.admissionReason ||
-      "Internação clínica para tratamento especializado e monitorização de enfermagem",
-    hospitalizedLast6m: latestAssessment?.hospitalizedLast6m ?? true,
-    medicationsInUse:
-      latestAssessment?.medicationsInUse || "Alopurinol 300mg, Aciclovir 400mg 12/12h",
-    transfusionReaction:
-      latestAssessment?.transfusionReaction || "Transfundiu - sem reação",
+    admissionReason: latestAssessment?.admissionReason || "",
+    hospitalizedLast6m: latestAssessment?.hospitalizedLast6m ?? false,
+    medicationsInUse: latestAssessment?.medicationsInUse || "",
+    transfusionReaction: latestAssessment?.transfusionReaction || "Nunca transfundiu",
     knowsHealthCondition: latestAssessment?.knowsHealthCondition ?? true,
-    currentHistory:
-      latestAssessment?.currentHistory ||
-      "Paciente admitido na unidade para continuidade terapêutica.",
-    pastHistory: latestAssessment?.pastHistory || "HAS controlada.",
-    familyHistory: latestAssessment?.familyHistory || "Sem particularidades adicionais.",
-    neuroRegulation:
-      latestAssessment?.neuroRegulation ||
-      "Lúcido, orientado no tempo e espaço, Glasgow 15",
+    currentHistory: latestAssessment?.currentHistory || "",
+    pastHistory: latestAssessment?.pastHistory || "",
+    familyHistory: latestAssessment?.familyHistory || "",
+    neuroRegulation: latestAssessment?.neuroRegulation || "",
     camScore: latestAssessment?.camScore || "Negativo para Delirium",
     painPresent: latestAssessment?.painPresent ?? false,
-    painDetails: latestAssessment?.painDetails || "Nega dor no momento (EVA 0)",
-    respiratoryExam:
-      latestAssessment?.respiratoryExam ||
-      "Eupneico em ar ambiente, MV+ bilateral sem ruídos adventícios",
-    vitalSignsNotes:
-      latestAssessment?.vitalSignsNotes || "Normotenso, normocárdico, afebril",
-    extremitiesPerfusion:
-      latestAssessment?.extremitiesPerfusion ||
-      "Extremidades aquecidas, TEC < 3s, sem edemas",
-    bmiNutrition:
-      latestAssessment?.bmiNutrition || "IMC dentro da faixa de eutrofia; boa aceitação oral",
-    oralCavity:
-      latestAssessment?.oralCavity ||
-      "Mucosas coradas e hidratadas, higiene oral preservada",
-    skinIntegrity:
-      latestAssessment?.skinIntegrity || "Pele íntegra, turgor preservado",
-    pressureInjury:
-      latestAssessment?.pressureInjury ||
-      "Sem lesão por pressão (Escala de Braden monitorada)",
-    physicalMobility:
-      latestAssessment?.physicalMobility || "Deambula com auxílio no quarto",
-    fallRiskSak:
-      latestAssessment?.fallRiskSak || "Risco Moderado (Escala SAK monitorada)",
-    eliminations:
-      latestAssessment?.eliminations ||
-      "Diurese espontânea clara; evacuação fisiológica presente",
-    sleepAndRest: latestAssessment?.sleepAndRest || "Sono reparador preservado",
-    familyRelationship:
-      latestAssessment?.familyRelationship ||
-      "Rede de apoio familiar presente e participativa",
-    vulnerabilitySituations:
-      latestAssessment?.vulnerabilitySituations ||
-      "Sem vulnerabilidade identificada no momento",
+    painDetails: latestAssessment?.painDetails || "",
+    respiratoryExam: latestAssessment?.respiratoryExam || "",
+    vitalSignsNotes: latestAssessment?.vitalSignsNotes || "",
+    extremitiesPerfusion: latestAssessment?.extremitiesPerfusion || "",
+    bmiNutrition: latestAssessment?.bmiNutrition || "",
+    oralCavity: latestAssessment?.oralCavity || "",
+    skinIntegrity: latestAssessment?.skinIntegrity || "",
+    pressureInjury: latestAssessment?.pressureInjury || "",
+    physicalMobility: latestAssessment?.physicalMobility || "",
+    fallRiskSak: latestAssessment?.fallRiskSak || "",
+    eliminations: latestAssessment?.eliminations || "",
+    sleepAndRest: latestAssessment?.sleepAndRest || "",
+    familyRelationship: latestAssessment?.familyRelationship || "",
+    vulnerabilitySituations: latestAssessment?.vulnerabilitySituations || "",
     emotionalState: latestAssessment?.emotionalState || "Tranquilo",
-    lifestyleAndWork: latestAssessment?.lifestyleAndWork || "Rotina adaptada ao tratamento",
-    beliefsAndValues:
-      latestAssessment?.beliefsAndValues ||
-      "Crenças religiosas respeitadas; encontra conforto no apoio familiar",
+    lifestyleAndWork: latestAssessment?.lifestyleAndWork || "",
+    beliefsAndValues: latestAssessment?.beliefsAndValues || "",
     selfCareCapacity:
       latestAssessment?.selfCareCapacity ||
       "Paciente com capacidade para o autocuidado",
@@ -213,18 +184,9 @@ export default function NursingProcessTab({
       "Paciente sem limitações para a educação",
     smokingStatus: latestAssessment?.smokingStatus || "Nega tabagismo",
     otherDrugsStatus: latestAssessment?.otherDrugsStatus || "Nega outras drogas",
-    conductSummary:
-      latestAssessment?.conductSummary ||
-      "Manter vigilância de sinais vitais 6/6h, protocolo de prevenção de quedas e cuidados com acesso venoso.",
-    careLineHCPA:
-      latestAssessment?.careLineHCPA ||
-      "Medicamentos especiais e Segurança do Paciente",
-    educationActions: [
-      "Prevenção de quedas",
-      "Identificação do paciente",
-      "Direitos do paciente",
-      "Lesão por pressão",
-    ],
+    conductSummary: latestAssessment?.conductSummary || "",
+    careLineHCPA: latestAssessment?.careLineHCPA || "",
+    educationActions: [] as string[],
     freeTextSummary: latestAssessment?.freeTextSummary || "",
   });
 

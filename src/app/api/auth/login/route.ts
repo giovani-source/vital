@@ -53,7 +53,10 @@ export async function POST(req: NextRequest) {
 
     if (!user.active) {
       return NextResponse.json(
-        { error: "Conta desativada pelo administrador da instituição." },
+        {
+          error:
+            "Seu perfil profissional aguarda liberação pelo Administrador (ADM). Acesse com o perfil ADM em 'Gestão & Permissões' para aprovar este acesso.",
+        },
         { status: 403 }
       );
     }
@@ -70,7 +73,7 @@ export async function POST(req: NextRequest) {
       });
       return NextResponse.json(
         {
-          error: `Conta temporariamente bloqueada por tentativas excessivas. Tente novamente em ${minutesLeft} minuto(s) ou solicite desbloqueio.`,
+          error: `Conta temporariamente bloqueada por tentativas excessivas. Tente novamente em ${minutesLeft} minuto(s) ou solicite desbloqueio ao ADM.`,
         },
         { status: 429 }
       );
@@ -115,25 +118,24 @@ export async function POST(req: NextRequest) {
     const expiresAt = getSessionExpiryDate();
     const token = createSignedSessionToken(user.id, expiresAt);
 
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: user.id },
-        data: {
-          failedLoginAttempts: 0,
-          lockedUntil: null,
-          lastLoginAt: new Date(),
-        },
-      }),
-      prisma.session.create({
-        data: {
-          token,
-          userId: user.id,
-          ipAddress: req.headers.get("x-forwarded-for") || "127.0.0.1",
-          userAgent: req.headers.get("user-agent") || "Navegador Web Hospitalar",
-          expiresAt,
-        },
-      }),
-    ]);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        lastLoginAt: new Date(),
+      },
+    });
+
+    await prisma.session.create({
+      data: {
+        token,
+        userId: user.id,
+        ipAddress: req.headers.get("x-forwarded-for") || "127.0.0.1",
+        userAgent: req.headers.get("user-agent") || "Navegador Web Hospitalar",
+        expiresAt,
+      },
+    });
 
     await recordAuditLog({
       userId: user.id,
@@ -174,4 +176,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

@@ -16,7 +16,7 @@ export async function GET() {
         professional: true,
         institution: true,
       },
-      orderBy: { name: "asc" },
+      orderBy: [{ active: "asc" }, { createdAt: "desc" }],
     });
 
     const units = await prisma.hospitalUnit.findMany({
@@ -41,6 +41,7 @@ export async function GET() {
         failedLoginAttempts: u.failedLoginAttempts,
         lockedUntil: u.lockedUntil,
         lastLoginAt: u.lastLoginAt,
+        createdAt: u.createdAt,
         professional: u.professional,
       })),
       units,
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
 
     if (!user.capabilities.canManageUsersAndUnits) {
       return NextResponse.json(
-        { error: "Apenas o Administrador Hospitalar pode gerenciar usuários e unidades." },
+        { error: "Apenas o Administrador (ADM) pode gerenciar perfis, liberações e unidades." },
         { status: 403 }
       );
     }
@@ -83,12 +84,29 @@ export async function POST(req: NextRequest) {
         councilNumber,
         councilState = "RS",
         specialty = "Assistência Hospitalar",
+        active = true,
       } = body;
 
       if (!username || !email || !name || !password || !role) {
         return NextResponse.json(
           { error: "Preencha todos os campos obrigatórios do usuário." },
           { status: 400 }
+        );
+      }
+
+      const existing = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { username: String(username).trim().toLowerCase() },
+            { email: String(email).trim().toLowerCase() },
+          ],
+        },
+      });
+
+      if (existing) {
+        return NextResponse.json(
+          { error: "Já existe um usuário cadastrado com este login ou e-mail." },
+          { status: 409 }
         );
       }
 
@@ -103,14 +121,15 @@ export async function POST(req: NextRequest) {
           passwordHash: hash,
           passwordSalt: salt,
           role: String(role),
-          ...(role !== "ADMIN" && councilType && councilNumber
+          active: Boolean(active),
+          ...(councilType && councilNumber
             ? {
                 professional: {
                   create: {
                     category: String(role),
-                    councilType: String(councilType),
+                    councilType: String(councilType).toUpperCase(),
                     councilNumber: String(councilNumber),
-                    councilState: String(councilState),
+                    councilState: String(councilState).toUpperCase(),
                     specialty: String(specialty),
                   },
                 },
@@ -128,10 +147,93 @@ export async function POST(req: NextRequest) {
         module: "ADMIN",
         entityType: "User",
         entityId: created.id,
-        details: `Cadastrou profissional/usuário ${created.name} (${created.role}).`,
+        details: `Cadastrou e liberou profissional/usuário ${created.name} (${created.role}).`,
       });
 
       return NextResponse.json({ success: true, createdUser: created });
+    }
+
+    if (action === "APPROVE_USER" && body.targetUserId) {
+      const target = await prisma.user.findUnique({ where: { id: body.targetUserId } });
+      if (!target) {
+        return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 });
+      }
+
+      const newRole = body.role ? String(body.role) : target.role;
+
+      const updated = await prisma.user.update({
+        where: { id: target.id },
+        data: {
+          active: true,
+          role: newRole,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        },
+      });
+
+      await recordAuditLog({
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        action: "APPROVE_USER",
+        module: "ADMIN",
+        entityType: "User",
+        entityId: updated.id,
+        details: `ADM liberou/aprovou o acesso de ${updated.name} com o perfil ${updated.role}.`,
+      });
+
+      return NextResponse.json({ success: true, user: updated });
+    }
+
+    if (action === "UPDATE_USER_ROLE" && body.targetUserId && body.role) {
+      const target = await prisma.user.findUnique({ where: { id: body.targetUserId } });
+      if (!target) {
+        return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 });
+      }
+
+      const updated = await prisma.user.update({
+        where: { id: target.id },
+        data: { role: String(body.role) },
+      });
+
+      await recordAuditLog({
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        action: "UPDATE_USER_ROLE",
+        module: "ADMIN",
+        entityType: "User",
+        entityId: updated.id,
+        details: `ADM alterou o perfil profissional de ${updated.name} para ${updated.role}.`,
+      });
+
+      return NextResponse.json({ success: true, user: updated });
+    }
+
+    if (action === "RESET_USER_PASSWORD" && body.targetUserId && body.newPassword) {
+      const { hash, salt } = hashPassword(String(body.newPassword));
+      const updated = await prisma.user.update({
+        where: { id: String(body.targetUserId) },
+        data: {
+          passwordHash: hash,
+          passwordSalt: salt,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        },
+      });
+
+      await recordAuditLog({
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        action: "RESET_USER_PASSWORD",
+        module: "ADMIN",
+        entityType: "User",
+        entityId: updated.id,
+        details: `ADM redefiniu a senha de acesso de ${updated.name}.`,
+      });
+
+      return NextResponse.json({ success: true });
     }
 
     if (action === "TOGGLE_USER_STATUS" && body.targetUserId) {
@@ -157,10 +259,84 @@ export async function POST(req: NextRequest) {
         module: "ADMIN",
         entityType: "User",
         entityId: updated.id,
-        details: `Alterou status da conta de ${updated.name} para ${updated.active ? "ATIVO (Desbloqueado)" : "INATIVO"}.`,
+        details: `Alterou status da conta de ${updated.name} para ${updated.active ? "ATIVO (Liberado)" : "BLOQUEADO / AGUARDANDO LIBERAÇÃO"}.`,
       });
 
       return NextResponse.json({ success: true });
+    }
+
+    if (action === "DELETE_USER" && body.targetUserId) {
+      if (body.targetUserId === user.id) {
+        return NextResponse.json(
+          { error: "Você não pode excluir sua própria conta de Administrador em uso." },
+          { status: 400 }
+        );
+      }
+      const target = await prisma.user.findUnique({ where: { id: body.targetUserId } });
+      if (!target) {
+        return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 });
+      }
+
+      await prisma.session.deleteMany({ where: { userId: target.id } });
+      await prisma.professionalProfile.deleteMany({ where: { userId: target.id } });
+      await prisma.user.delete({ where: { id: target.id } });
+
+      await recordAuditLog({
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        action: "DELETE_USER",
+        module: "ADMIN",
+        entityType: "User",
+        entityId: target.id,
+        details: `Removeu cadastro de ${target.name} (${target.username}).`,
+      });
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === "CREATE_UNIT") {
+      const { code, name, floor, specialty } = body;
+      if (!code || !name) {
+        return NextResponse.json(
+          { error: "Informe o código e o nome da unidade hospitalar." },
+          { status: 400 }
+        );
+      }
+
+      const createdUnit = await prisma.hospitalUnit.create({
+        data: {
+          institutionId: user.institutionId,
+          code: String(code).trim().toUpperCase(),
+          name: String(name).trim(),
+          floor: String(floor || "1º Andar").trim(),
+          specialty: String(specialty || "Clínica Geral").trim(),
+        },
+      });
+
+      return NextResponse.json({ success: true, unit: createdUnit });
+    }
+
+    if (action === "CREATE_BED") {
+      const { unitId, code, room, type = "ENFERMARIA" } = body;
+      if (!unitId || !code) {
+        return NextResponse.json(
+          { error: "Selecione a unidade e informe o código do leito." },
+          { status: 400 }
+        );
+      }
+
+      const createdBed = await prisma.bed.create({
+        data: {
+          unitId: String(unitId),
+          code: String(code).trim().toUpperCase(),
+          room: String(room || `Quarto ${code}`).trim(),
+          type: String(type),
+          status: "DISPONIVEL",
+        },
+      });
+
+      return NextResponse.json({ success: true, bed: createdBed });
     }
 
     if (action === "UPDATE_BED_STATUS" && body.bedId && body.status) {
@@ -192,4 +368,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

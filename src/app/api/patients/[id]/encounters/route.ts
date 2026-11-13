@@ -36,28 +36,25 @@ export async function POST(
         return NextResponse.json({ error: "Atendimento não localizado." }, { status: 404 });
       }
 
-      await prisma.$transaction([
-        prisma.encounter.update({
-          where: { id: encounterId },
-          data: {
-            status: "ALTA_HOSPITALAR",
-            closedAt: new Date(),
-            dischargeSummary: dischargeSummary || "Alta hospitalar melhorada com orientações.",
-          },
-        }),
-        ...(enc.admission
-          ? [
-              prisma.admission.update({
-                where: { id: enc.admission.id },
-                data: { status: "ENCERRADA", dischargedAt: new Date() },
-              }),
-              prisma.bed.update({
-                where: { id: enc.admission.bedId },
-                data: { status: "LIVRE" },
-              }),
-            ]
-          : []),
-      ]);
+      await prisma.encounter.update({
+        where: { id: encounterId },
+        data: {
+          status: "ALTA_HOSPITALAR",
+          closedAt: new Date(),
+          dischargeSummary: dischargeSummary || "Alta hospitalar melhorada com orientações.",
+        },
+      });
+
+      if (enc.admission) {
+        await prisma.admission.update({
+          where: { id: enc.admission.id },
+          data: { status: "ENCERRADA", dischargedAt: new Date() },
+        });
+        await prisma.bed.update({
+          where: { id: enc.admission.bedId },
+          data: { status: "DISPONIVEL" },
+        });
+      }
 
       await recordAuditLog({
         userId: user.id,

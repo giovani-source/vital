@@ -124,27 +124,21 @@ export default function AppShell({ children, user }: AppShellProps) {
     },
     {
       href: "/pacientes",
-      label: "Cadastro & Internações",
+      label: "Pacientes & Internações",
       icon: Users,
-      match: pathname.startsWith("/pacientes"),
-    },
-    {
-      href: "/prontuario/7834153",
-      label: "Prontuário Eletrônico (PEP)",
-      icon: FileText,
-      match: pathname.startsWith("/prontuario"),
-    },
-    {
-      href: "/auditoria",
-      label: "Auditoria & Integração",
-      icon: ShieldCheck,
-      match: pathname.startsWith("/auditoria"),
+      match: pathname.startsWith("/pacientes") || pathname.startsWith("/prontuario"),
     },
     {
       href: "/admin",
-      label: "Gestão & Permissões",
+      label: "Perfis & Liberação ADM",
       icon: Settings,
       match: pathname.startsWith("/admin"),
+    },
+    {
+      href: "/auditoria",
+      label: "Auditoria & Segurança",
+      icon: ShieldCheck,
+      match: pathname.startsWith("/auditoria"),
     },
   ];
 
@@ -319,29 +313,22 @@ export default function AppShell({ children, user }: AppShellProps) {
             {!collapsed && (
               <div className="pt-4 mt-4 border-t border-slate-800 px-2">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block mb-2">
-                  Acesso Rápido — Pacientes 5º Sul
+                  Atalhos Operacionais
                 </span>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <Link
-                    href="/prontuario/7834153"
-                    className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs bg-slate-800/70 hover:bg-slate-800 text-slate-200 border border-slate-700/70"
+                    href="/pacientes"
+                    className="flex items-center justify-between px-2.5 py-2 rounded text-xs bg-slate-800/70 hover:bg-slate-800 text-slate-200 border border-slate-700/70"
                   >
-                    <span className="truncate font-medium">0551A • José Luis R.</span>
-                    <span className="text-[10px] text-amber-300 font-mono">7834153</span>
+                    <span className="truncate font-medium">+ Novo Paciente / PEP</span>
+                    <span className="text-[10px] text-emerald-400 font-bold">ABRIR</span>
                   </Link>
                   <Link
-                    href="/prontuario/18382671"
-                    className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs bg-slate-800/70 hover:bg-slate-800 text-slate-200 border border-slate-700/70"
+                    href="/admin"
+                    className="flex items-center justify-between px-2.5 py-2 rounded text-xs bg-slate-800/70 hover:bg-slate-800 text-slate-200 border border-slate-700/70"
                   >
-                    <span className="truncate font-medium">0549B • Pedro Machado</span>
-                    <span className="text-[10px] text-emerald-300 font-mono">18382671</span>
-                  </Link>
-                  <Link
-                    href="/prontuario/18427682"
-                    className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs bg-slate-800/70 hover:bg-slate-800 text-slate-200 border border-slate-700/70"
-                  >
-                    <span className="truncate font-medium">0556A • Maria Inez K.</span>
-                    <span className="text-[10px] text-sky-300 font-mono">18427682</span>
+                    <span className="truncate font-medium">Liberar Perfis (ADM)</span>
+                    <span className="text-[10px] text-amber-300 font-bold">GERENCIAR</span>
                   </Link>
                 </div>
               </div>
@@ -352,10 +339,10 @@ export default function AppShell({ children, user }: AppShellProps) {
             <div className="p-3 m-2.5 rounded-lg bg-slate-800/80 border border-slate-700/80 text-[11px] text-slate-300 space-y-1">
               <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
                 <UserCheck className="w-3.5 h-3.5" />
-                <span>Conformidade Técnica</span>
+                <span>Controle de Alçadas RBAC</span>
               </div>
               <p className="text-[10px] text-slate-400 leading-relaxed">
-                COFEN 736/2024 • COFEN 754/2024 • LGPD • CFM/SBIS (Ambiente de Demonstração com Dados Fictícios)
+                COFEN 736/2024 • COFEN 754/2024 • LGPD • Banco Persistente em Nuvem
               </p>
             </div>
           )}

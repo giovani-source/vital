@@ -122,10 +122,38 @@ export async function GET(
       );
     }
 
-    const activeEncounter =
+    let activeEncounter =
       patient.encounters.find((e) => e.status === "EM_ANDAMENTO") ||
       patient.encounters[0] ||
       null;
+
+    // Caso o paciente tenha sido cadastrado sem internação ativa, cria atendimento inicial automaticamente para permitir evoluções imediatas
+    if (!activeEncounter) {
+      const defaultUnit = await prisma.hospitalUnit.findFirst({
+        where: { institutionId: patient.institutionId },
+      });
+      if (defaultUnit) {
+        const autoEncounter = await prisma.encounter.create({
+          data: {
+            encounterNumber: `ATD-2026-${Math.floor(10000 + Math.random() * 89999)}`,
+            patientId: patient.id,
+            unitId: defaultUnit.id,
+            type: "ATENDIMENTO_CLINICO",
+            status: "EM_ANDAMENTO",
+            mainDiagnosis: "Em avaliação assistencial",
+            mainIcd10: "Z00.0",
+            reasonForAdmission: "Atendimento clínico assistencial",
+            riskConditions: JSON.stringify([]),
+          },
+          include: {
+            unit: true,
+            admission: { include: { bed: true } },
+          },
+        });
+        activeEncounter = autoEncounter;
+        patient.encounters.unshift(autoEncounter);
+      }
+    }
 
     if (!skipAudit) {
       await recordAuditLog({

@@ -29,7 +29,9 @@ export async function GET(req: NextRequest) {
 
     const allBeds = units.flatMap((u) => u.beds);
     const occupiedBeds = allBeds.filter((b) => b.status === "OCUPADO").length;
-    const freeBeds = allBeds.filter((b) => b.status === "LIVRE").length;
+    const freeBeds = allBeds.filter(
+      (b) => b.status === "DISPONIVEL" || b.status === "LIVRE"
+    ).length;
 
     const activeEncounters = await prisma.encounter.findMany({
       where: {
@@ -234,7 +236,7 @@ export async function GET(req: NextRequest) {
         specialty: u.specialty,
         activeAdmissions: u._count.admissions,
         totalBeds: u.beds.length,
-        freeBeds: u.beds.filter((b) => b.status === "LIVRE").length,
+        freeBeds: u.beds.filter((b) => b.status === "DISPONIVEL" || b.status === "LIVRE").length,
         beds: u.beds,
       })),
       patients: patientRows,

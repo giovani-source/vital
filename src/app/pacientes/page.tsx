@@ -72,21 +72,21 @@ function PacientesContent() {
     null
   );
 
-  // Estado do formulário de novo paciente
+  // Estado do formulário de novo paciente (sem dados fictícios pré-preenchidos)
   const [formData, setFormData] = useState({
     name: "",
-    birthDate: "1985-05-14",
+    birthDate: "",
     sex: "F",
     skinColor: "Branca",
-    maritalStatus: "Casado(a)",
-    occupation: "Analista Administrativa",
+    maritalStatus: "Solteiro(a)",
+    occupation: "",
     cpf: "",
     cns: "",
-    chartNumber: `${Math.floor(18500000 + Math.random() * 900000)}`,
-    phone: "(51) 99800-1122",
+    chartNumber: `${Math.floor(1000000 + Math.random() * 8999999)}`,
+    phone: "",
     emergencyContactName: "",
-    emergencyRelationship: "Cônjuge",
-    bloodType: "A+",
+    emergencyRelationship: "",
+    bloodType: "O+",
     clinicalHistory: "",
     personalAntecedents: "",
     familyAntecedents: "",
@@ -95,7 +95,7 @@ function PacientesContent() {
     unitId: "",
     bedId: "",
     mainDiagnosis: "",
-    mainIcd10: "I10",
+    mainIcd10: "",
     reasonForAdmission: "",
   });
 
@@ -104,7 +104,7 @@ function PacientesContent() {
   const [admitData, setAdmitData] = useState({
     unitId: "",
     bedId: "",
-    mainIcd10: "J18.9",
+    mainIcd10: "",
     mainDiagnosis: "",
     reasonForAdmission: "",
     isolationPrecaution: "Padrão",
@@ -128,7 +128,9 @@ function PacientesContent() {
       setUnits(data.units);
       if (data.units.length > 0 && !formData.unitId) {
         const firstUnit = data.units[0];
-        const freeBed = firstUnit.beds.find((b: { status: string }) => b.status === "LIVRE");
+        const freeBed = firstUnit.beds.find(
+          (b: { status: string }) => b.status === "DISPONIVEL" || b.status === "LIVRE"
+        );
         setFormData((prev) => ({
           ...prev,
           unitId: firstUnit.id,
@@ -457,7 +459,9 @@ function PacientesContent() {
                       value={formData.unitId}
                       onChange={(e) => {
                         const u = units.find((unit) => unit.id === e.target.value);
-                        const free = u?.beds.find((b) => b.status === "LIVRE");
+                        const free = u?.beds.find(
+                          (b) => b.status === "DISPONIVEL" || b.status === "LIVRE"
+                        );
                         setFormData({
                           ...formData,
                           unitId: e.target.value,
@@ -484,10 +488,10 @@ function PacientesContent() {
                       className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white font-mono"
                     >
                       {selectedUnitForForm?.beds
-                        .filter((b) => b.status === "LIVRE")
+                        .filter((b) => b.status === "DISPONIVEL" || b.status === "LIVRE")
                         .map((b) => (
                           <option key={b.id} value={b.id}>
-                            {b.code} ({b.room}) — LIVRE
+                            {b.code} ({b.room}) — DISPONÍVEL
                           </option>
                         ))}
                     </select>
@@ -558,6 +562,27 @@ function PacientesContent() {
 
         {/* Lista de Pacientes com Histórico de Atendimentos (Paciente vs. Atendimento) */}
         <div className="space-y-3">
+          {patients.length === 0 && (
+            <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-3">
+              <p className="text-sm font-bold text-slate-800">
+                Nenhum paciente cadastrado no banco de dados ainda.
+              </p>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                O sistema está 100% limpo, sem pacientes ou prescrições fictícias. Clique no botão
+                abaixo para cadastrar seu primeiro paciente, alocá-lo em um leito e abrir o
+                Prontuário Eletrônico para registrar evoluções.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowNewPatientForm(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4" />
+                Cadastrar Primeiro Paciente
+              </button>
+            </div>
+          )}
+
           {patients.map((p) => {
             const activeEnc = p.encounters.find((e) => e.status === "EM_ANDAMENTO");
             return (
@@ -704,7 +729,9 @@ function PacientesContent() {
                     value={admitData.unitId}
                     onChange={(e) => {
                       const u = units.find((unit) => unit.id === e.target.value);
-                      const free = u?.beds.find((b) => b.status === "LIVRE");
+                      const free = u?.beds.find(
+                        (b) => b.status === "DISPONIVEL" || b.status === "LIVRE"
+                      );
                       setAdmitData({
                         ...admitData,
                         unitId: e.target.value,
@@ -729,7 +756,7 @@ function PacientesContent() {
                     className="w-full px-2.5 py-2 rounded border border-slate-300 font-mono"
                   >
                     {selectedUnitForAdmit?.beds
-                      .filter((b) => b.status === "LIVRE")
+                      .filter((b) => b.status === "DISPONIVEL" || b.status === "LIVRE")
                       .map((b) => (
                         <option key={b.id} value={b.id}>
                           {b.code} ({b.room})

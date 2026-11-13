@@ -387,6 +387,33 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
+                  {patients.length === 0 && (
+                    <tr>
+                      <td colSpan={14} className="py-10 px-4 text-center space-y-3">
+                        <p className="text-sm font-bold text-slate-800">
+                          Nenhum paciente internado no momento (banco de dados limpo, sem dados fictícios).
+                        </p>
+                        <p className="text-xs text-slate-500 max-w-xl mx-auto">
+                          Cadastre um paciente e vincule-o a um leito disponível para abrir o Prontuário
+                          Eletrônico completo, registrar evoluções, Processo de Enfermagem e prescrições.
+                        </p>
+                        <div className="flex items-center justify-center gap-3 pt-1">
+                          <Link
+                            href="/pacientes"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs"
+                          >
+                            + Cadastrar Paciente e Internar
+                          </Link>
+                          <Link
+                            href="/admin"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-xs"
+                          >
+                            Gerenciar / Liberar Perfis (ADM)
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   {patients.map((p) => {
                     const isSelected = selectedPatient?.patientId === p.patientId;
                     return (

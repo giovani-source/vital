@@ -9,7 +9,7 @@ export type UserRole =
 export interface RoleCapabilities {
   label: string;
   badgeColor: string;
-  canViewClinicalPEP: boolean; // Admin NÃO possui autorização automática para ver dados clínicos sigilosos
+  canViewClinicalPEP: boolean;
   canManageUsersAndUnits: boolean;
   canRegisterPatient: boolean;
   canWriteMedicalEvolution: boolean;
@@ -18,11 +18,11 @@ export interface RoleCapabilities {
   canWriteMultiprofessionalEvolution: boolean;
   canPerformNursingAssessment: boolean; // Etapa 1 - Avaliação de Enfermagem
   canPrescribeNursingDiagnosisAndPlan: boolean; // Etapas 2, 3, 4 e 5 privativas do Enfermeiro (COFEN 736/2024)
-  canPrescribeMedications: boolean; // Privativo do Médico
+  canPrescribeMedications: boolean; // Privativo do Médico (e liberado ao Superusuário ADM)
   canPrescribeNursingCare: boolean; // Privativo do Enfermeiro / Médico
   canCheckMedicationsAndCare: boolean; // Enfermeiro e Técnico de Enfermagem
   canRecordVitalSigns: boolean;
-  canRecordMedicalDiagnosis: boolean; // Privativo do Médico
+  canRecordMedicalDiagnosis: boolean;
   canRecordAllergies: boolean;
   canRequestExams: boolean;
   canUploadDocuments: boolean;
@@ -31,26 +31,26 @@ export interface RoleCapabilities {
 
 export const ROLE_MATRIX: Record<UserRole, RoleCapabilities> = {
   ADMIN: {
-    label: "Administrador Hospitalar",
-    badgeColor: "bg-slate-700 text-white",
-    canViewClinicalPEP: false, // Regra regulatória explícita: Admin gerencia usuários/instituições sem ver dados clínicos sigilosos
+    label: "Administrador Geral (Acesso Total)",
+    badgeColor: "bg-slate-900 text-white",
+    canViewClinicalPEP: true,
     canManageUsersAndUnits: true,
     canRegisterPatient: true,
-    canWriteMedicalEvolution: false,
-    canWriteNursingEvolution: false,
-    canWriteTechNursingNote: false,
-    canWriteMultiprofessionalEvolution: false,
-    canPerformNursingAssessment: false,
-    canPrescribeNursingDiagnosisAndPlan: false,
-    canPrescribeMedications: false,
-    canPrescribeNursingCare: false,
-    canCheckMedicationsAndCare: false,
-    canRecordVitalSigns: false,
-    canRecordMedicalDiagnosis: false,
-    canRecordAllergies: false,
-    canRequestExams: false,
-    canUploadDocuments: false,
-    canExportPDF: false,
+    canWriteMedicalEvolution: true,
+    canWriteNursingEvolution: true,
+    canWriteTechNursingNote: true,
+    canWriteMultiprofessionalEvolution: true,
+    canPerformNursingAssessment: true,
+    canPrescribeNursingDiagnosisAndPlan: true,
+    canPrescribeMedications: true,
+    canPrescribeNursingCare: true,
+    canCheckMedicationsAndCare: true,
+    canRecordVitalSigns: true,
+    canRecordMedicalDiagnosis: true,
+    canRecordAllergies: true,
+    canRequestExams: true,
+    canUploadDocuments: true,
+    canExportPDF: true,
   },
   MEDICO: {
     label: "Médico(a)",
@@ -103,15 +103,15 @@ export const ROLE_MATRIX: Record<UserRole, RoleCapabilities> = {
     canManageUsersAndUnits: false,
     canRegisterPatient: false,
     canWriteMedicalEvolution: false,
-    canWriteNursingEvolution: false, // Privativo do Enfermeiro
-    canWriteTechNursingNote: true, // Anotação de Enfermagem autorizada
+    canWriteNursingEvolution: false, // Bloqueado: privativo do Enfermeiro
+    canWriteTechNursingNote: true, // Autorizado: Anotação de Enfermagem
     canWriteMultiprofessionalEvolution: false,
-    canPerformNursingAssessment: false,
+    canPerformNursingAssessment: false, // Bloqueado: privativo do Enfermeiro
     canPrescribeNursingDiagnosisAndPlan: false, // Bloqueado: privativo do Enfermeiro
-    canPrescribeMedications: false, // Bloqueado
+    canPrescribeMedications: false, // Bloqueado: privativo do Médico
     canPrescribeNursingCare: false, // Bloqueado: privativo do Enfermeiro
-    canCheckMedicationsAndCare: true, // Autorizado para checagem beira-leito
-    canRecordVitalSigns: true, // Autorizado para controles e balanço hídrico
+    canCheckMedicationsAndCare: true, // Autorizado: Checagem beira-leito
+    canRecordVitalSigns: true, // Autorizado: Sinais vitais e balanço hídrico
     canRecordMedicalDiagnosis: false,
     canRecordAllergies: true,
     canRequestExams: false,
@@ -141,7 +141,7 @@ export const ROLE_MATRIX: Record<UserRole, RoleCapabilities> = {
     canExportPDF: true,
   },
   OUTRO_ASSISTENCIAL: {
-    label: "Farmacêutico(a) / Nutricionista Clínico",
+    label: "Profissional Multiprofissional (Farmácia / Nutrição / Psicologia)",
     badgeColor: "bg-purple-700 text-white",
     canViewClinicalPEP: true,
     canManageUsersAndUnits: false,
@@ -170,6 +170,7 @@ export function getRoleCapabilities(role: string): RoleCapabilities {
 
 export function canWriteEvolutionCategory(role: string, category: string): boolean {
   const cap = getRoleCapabilities(role);
+  if (role === "ADMIN") return true;
   switch (category) {
     case "EVOLUCAO_MEDICA":
       return cap.canWriteMedicalEvolution;
@@ -184,4 +185,3 @@ export function canWriteEvolutionCategory(role: string, category: string): boole
       return false;
   }
 }
-
