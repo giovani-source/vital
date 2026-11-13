@@ -30,11 +30,11 @@ async function main() {
   await prisma.rolePermission.deleteMany();
   await prisma.institution.deleteMany();
 
-  // 1. Instituição Hospitalar Principal
+  // 1. Instituição Principal — Per Te Residencial Sênior
   const institution = await prisma.institution.create({
     data: {
-      name: "Hospital Geral — Sistema PEP",
-      ShortName: "HOSP-PEP",
+      name: "Per Te Residencial Sênior",
+      ShortName: "PerTe",
       cnes: "2237601",
       cnpj: "87.123.456/0001-90",
       city: "Porto Alegre",

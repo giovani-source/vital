@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "HospVita PEP — Sistema Web de Prontuário Eletrônico Hospitalar",
+  title: "Prontuário PerTe — Per Te Residencial Sênior",
   description:
-    "Plataforma hospitalar de Prontuário Eletrônico do Paciente (PEP), Processo de Enfermagem (COFEN 736/2024), Prescrição e Checagem Beira-Leito.",
+    "Sistema Clínico e Assistencial de Prontuário Eletrônico — Per Te Residencial Sênior.",
+  icons: {
+    icon: "/logo-perte.jpg",
+  },
 };
 
 export default function RootLayout({
@@ -14,10 +17,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className="min-h-screen bg-slate-100 text-slate-900 antialiased">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="min-h-screen bg-[#F5F2EB] text-[#18281E] antialiased selection:bg-[#947743]/20 selection:text-[#143D25]">
         {children}
       </body>
     </html>
   );
 }
-

@@ -217,26 +217,26 @@ function PacientesContent() {
     <AppShell user={user}>
       <div className="p-4 lg:p-6 space-y-5 max-w-[1500px] mx-auto">
         {/* Cabeçalho */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="bg-white p-5 rounded-xl border border-[#E4DEC9] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <span className="text-[11px] font-bold uppercase text-emerald-700">
-              Módulo 3 — Cadastro Longitudinal e Admissão Hospitalar
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#8C703E]">
+              Per Te Residencial Sênior • Prontuário PerTe
             </span>
-            <h1 className="text-lg lg:text-xl font-bold text-slate-900">
-              Cadastro de Pacientes e Histórico de Atendimentos / Internações
+            <h1 className="font-editorial text-2xl font-bold text-[#143D25] mt-0.5">
+              Residentes, Pacientes e Histórico de Admissões
             </h1>
-            <p className="text-xs text-slate-500">
-              Cada paciente possui identificador e prontuário únicos, podendo ter múltiplos atendimentos e internações ao longo do tempo.
+            <p className="text-xs text-[#6E6654]">
+              Cadastre residentes/pacientes, vincule a uma unidade ou acomodação e acesse o prontuário eletrônico completo.
             </p>
           </div>
 
           <button
             type="button"
             onClick={() => setShowNewPatientForm(!showNewPatientForm)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#143D25] hover:bg-[#0E2E1B] text-white text-xs font-semibold shadow-2xs cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
-            <span>{showNewPatientForm ? "Fechar Formulário" : "Cadastrar Novo Paciente"}</span>
+            <span>{showNewPatientForm ? "Fechar Formulário" : "Novo Cadastro / Admissão"}</span>
           </button>
         </div>
 
@@ -263,12 +263,12 @@ function PacientesContent() {
             onSubmit={handleCreatePatient}
             className="bg-white rounded-xl border border-emerald-300 shadow-md p-5 space-y-4"
           >
-            <div className="flex items-center justify-between border-b pb-3">
-              <h2 className="font-bold text-sm text-slate-900">
-                Novo Cadastro de Paciente (Identificação, Demografia, Antecedentes e Admissão)
+            <div className="flex items-center justify-between border-b border-[#E4DEC9] pb-3">
+              <h2 className="font-editorial text-lg font-bold text-[#143D25]">
+                Ficha de Cadastro e Admissão
               </h2>
-              <span className="text-[11px] text-slate-500">
-                Campos validados pelo schema Zod no servidor
+              <span className="text-[11px] text-[#6E6654]">
+                Campos obrigatórios marcados com *
               </span>
             </div>
 
